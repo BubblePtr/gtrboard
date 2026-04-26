@@ -1,0 +1,16 @@
+language: zh-CN
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: true
+  path_filters:
+    - '!node_modules/**'
+    - '!dist/**'
+    - '!.wrangler/**'
+chat:
+  auto_reply: true
+knowledge_base:
+  opt_out: false
