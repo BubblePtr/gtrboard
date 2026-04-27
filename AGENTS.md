@@ -45,7 +45,8 @@ npx @tanstack/intent@latest list
 - TanStack Start 负责交互产品层。
 - Python services 负责夜间 topic discovery、research、scoring 和长时间 artifact generation。
 - 当前 `/api/chat` 使用 TanStack AI server route；provider keys 只允许服务端读取。
-- 首页用 TanStack Store 管理候选项目选择、artifact mode 和 human feedback 计数。
+- V1 使用 `src/lib/gtr-dashboard-store.ts` 和 `src/data/gtr-dashboard-fixtures.ts` 模拟旧项目的主题池、review session、pipeline run、preferences 和 scoring weights。
+- V1 路由为 `/`、`/topics`、`/pipeline`、`/settings`；历史趋势图路由已明确删除，不新增 `/history`。
 
 ## 集成要求
 
@@ -63,7 +64,8 @@ npx @tanstack/intent@latest list
 
 - TanStack Start loader 是 isomorphic；数据库、密钥、文件系统和外部私有 API 调用必须放进 server route 或 `createServerFn`。
 - TanStack AI 不是 Vercel AI SDK；使用 `chat()`、`openaiText()`、`toServerSentEventsResponse()` 和 `@tanstack/ai-react`。
-- 当前候选项目是 seed data，真实 GitHub Trending/Python scoring 接入仍是下一步。
+- 当前候选项目、pipeline run、偏好和权重都是 seed data，真实 GitHub Trending/Python scoring 接入仍是下一步。
+- 旧项目 `BubblePtr/GTR-Dashboard` 的 Python FastAPI/SQLModel/pipeline 实现没有迁入；当前只迁移前端产品形态和本地交互模型。
 - TanStack CLI 进度 UI 可能在依赖安装阶段卡住；生成文件可保留，之后直接运行 `npm install`。
 
 ## 工程要求

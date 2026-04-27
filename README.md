@@ -2,7 +2,18 @@
 
 GTR-Board 是一个 chat-first AI workspace，用来发现、讨论和评估 GitHub Trending 项目是否适合作为内容选题。
 
-交互产品层由 TanStack Start 承载；夜间发现、研究、评分和长任务生成预期由 Python services 承载。本仓库当前实现的是前端产品骨架、TanStack AI 流式聊天端点、Cloudflare Workers 部署配置，以及 CodeRabbit 仓库级评审配置。
+交互产品层由 TanStack Start 承载；夜间发现、研究、评分和长任务生成预期由 Python services 承载。本仓库当前实现的是 V1 前端产品骨架、TanStack AI 流式聊天端点、Cloudflare Workers 部署配置，以及 CodeRabbit 仓库级评审配置。
+
+## V1 功能
+
+V1 从旧项目 `BubblePtr/GTR-Dashboard` 迁移了核心前端体验，并改为当前 TanStack 技术栈的本地状态实现：
+
+- `/` Dashboard：选题统计、最新待审选题、最近 Pipeline 运行。
+- `/topics` 选题管理：今日候选/候选池筛选、AI 对话工作台、上下文面板、草稿编辑、采纳/跳过反馈。
+- `/pipeline` Pipeline：运行配置、五阶段进度、运行历史和模拟完成。
+- `/settings` 设置：用户偏好和 scoring weights 调整。
+
+历史趋势图路由已删除，不提供 `/history`。旧项目的 Python FastAPI、SQLModel 和真实 pipeline 代码没有迁入；当前用 `src/lib/gtr-dashboard-store.ts` 和 `src/data/gtr-dashboard-fixtures.ts` 表示 V1 前端交互模型。
 
 ## 本次脚手架
 
@@ -61,7 +72,7 @@ OLLAMA_MODEL=mistral:7b
 - TanStack Router: `src/routes` file-based routing。
 - TanStack Intent: 已安装本地 skill guidance，见 `AGENTS.md` 顶部 block。
 - TanStack AI: `/api/chat` 使用 `chat()` 和 `toServerSentEventsResponse()`，首页通过 `useChat()` 连接。
-- TanStack Store: `src/lib/workspace-store.ts` 管理候选项目、artifact mode 和反馈计数。
+- TanStack Store: `src/lib/gtr-dashboard-store.ts` 管理 V1 主题池、review session、pipeline run、偏好和 scoring weights；CLI demo 的 `workspace-store.ts` 仍保留给示例页。
 - shadcn/ui: 已添加基础 UI 组件到 `src/components/ui`。
 - Cloudflare: `@cloudflare/vite-plugin`、`wrangler.jsonc`、`npm run deploy`。
 - CodeRabbit: `.coderabbit.yaml` 提供仓库评审指引；实际启用通过 GitHub App 安装完成，不作为运行时代码集成。
