@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import {
   appendTopicMessage,
+  applyTopicReviewWriteback,
   getPipelineRun,
   getPipelineRuns,
   getPreferences,
@@ -59,6 +60,49 @@ describe('gtrDashboardStore', () => {
     expect(session.topic.message_count).toBe(2)
     expect(session.topic.draft_script).toContain('开发者配置失败')
     expect(session.signals.some((signal) => signal.label === '短视频')).toBe(true)
+  })
+
+  it('applies AI writeback signals and draft updates without replacing omitted drafts', () => {
+    const [topic] = getTodayTopics(1)
+
+    appendTopicMessage(topic.id, 'user', '帮我改成更适合短视频的脚本。')
+    const assistantMessage = appendTopicMessage(
+      topic.id,
+      'assistant',
+      '可以从部署前后的对比切入，并强化开场钩子。',
+    )
+    const previousSession = getTopicReviewSession(topic.id)
+    const previousTweet = previousSession.topic.draft_tweet
+
+    applyTopicReviewWriteback(topic.id, {
+      messageId: assistantMessage.id,
+      signals: [
+        {
+          signal_type: 'preference',
+          label: '部署前后对比',
+          polarity: 'positive',
+          strength: 0.82,
+        },
+      ],
+      draftUpdates: {
+        script: '开场：先展示部署失败，再切入这个项目如何缩短验证路径。',
+      },
+    })
+
+    const session = getTopicReviewSession(topic.id)
+
+    expect(session.signals.at(-1)).toMatchObject({
+      signal_type: 'preference',
+      label: '部署前后对比',
+      polarity: 'positive',
+      strength: 0.82,
+      message_id: assistantMessage.id,
+    })
+    expect(session.topic.user_edited_draft_script).toContain('部署失败')
+    expect(session.topic.user_edited_draft_tweet).toBeNull()
+    expect(session.topic.draft_tweet).toBe(previousTweet)
+    expect(session.topic.review_state).toBe('对话中')
+    expect(session.topic.message_count).toBe(previousSession.topic.message_count)
   })
 
   it('filters the topic pool by review state and action', () => {

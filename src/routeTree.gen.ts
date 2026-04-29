@@ -21,6 +21,8 @@ import { Route as DemoAiChatRouteImport } from './routes/demo/ai-chat'
 import { Route as ApiChatRouteImport } from './routes/api.chat'
 import { Route as DemoGuitarsIndexRouteImport } from './routes/demo/guitars/index'
 import { Route as DemoGuitarsGuitarIdRouteImport } from './routes/demo/guitars/$guitarId'
+import { Route as ApiTopicReviewWritebackRouteImport } from './routes/api.topic-review.writeback'
+import { Route as ApiTopicReviewChatRouteImport } from './routes/api.topic-review.chat'
 import { Route as DemoApiAiTtsRouteImport } from './routes/demo/api.ai.tts'
 import { Route as DemoApiAiTranscriptionRouteImport } from './routes/demo/api.ai.transcription'
 import { Route as DemoApiAiStructuredRouteImport } from './routes/demo/api.ai.structured'
@@ -87,6 +89,16 @@ const DemoGuitarsGuitarIdRoute = DemoGuitarsGuitarIdRouteImport.update({
   path: '/demo/guitars/$guitarId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiTopicReviewWritebackRoute = ApiTopicReviewWritebackRouteImport.update({
+  id: '/api/topic-review/writeback',
+  path: '/api/topic-review/writeback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTopicReviewChatRoute = ApiTopicReviewChatRouteImport.update({
+  id: '/api/topic-review/chat',
+  path: '/api/topic-review/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DemoApiAiTtsRoute = DemoApiAiTtsRouteImport.update({
   id: '/demo/api/ai/tts',
   path: '/demo/api/ai/tts',
@@ -124,6 +136,8 @@ export interface FileRoutesByFullPath {
   '/demo/ai-image': typeof DemoAiImageRoute
   '/demo/ai-structured': typeof DemoAiStructuredRoute
   '/demo/store': typeof DemoStoreRoute
+  '/api/topic-review/chat': typeof ApiTopicReviewChatRoute
+  '/api/topic-review/writeback': typeof ApiTopicReviewWritebackRoute
   '/demo/guitars/$guitarId': typeof DemoGuitarsGuitarIdRoute
   '/demo/guitars/': typeof DemoGuitarsIndexRoute
   '/demo/api/ai/chat': typeof DemoApiAiChatRoute
@@ -143,6 +157,8 @@ export interface FileRoutesByTo {
   '/demo/ai-image': typeof DemoAiImageRoute
   '/demo/ai-structured': typeof DemoAiStructuredRoute
   '/demo/store': typeof DemoStoreRoute
+  '/api/topic-review/chat': typeof ApiTopicReviewChatRoute
+  '/api/topic-review/writeback': typeof ApiTopicReviewWritebackRoute
   '/demo/guitars/$guitarId': typeof DemoGuitarsGuitarIdRoute
   '/demo/guitars': typeof DemoGuitarsIndexRoute
   '/demo/api/ai/chat': typeof DemoApiAiChatRoute
@@ -163,6 +179,8 @@ export interface FileRoutesById {
   '/demo/ai-image': typeof DemoAiImageRoute
   '/demo/ai-structured': typeof DemoAiStructuredRoute
   '/demo/store': typeof DemoStoreRoute
+  '/api/topic-review/chat': typeof ApiTopicReviewChatRoute
+  '/api/topic-review/writeback': typeof ApiTopicReviewWritebackRoute
   '/demo/guitars/$guitarId': typeof DemoGuitarsGuitarIdRoute
   '/demo/guitars/': typeof DemoGuitarsIndexRoute
   '/demo/api/ai/chat': typeof DemoApiAiChatRoute
@@ -184,6 +202,8 @@ export interface FileRouteTypes {
     | '/demo/ai-image'
     | '/demo/ai-structured'
     | '/demo/store'
+    | '/api/topic-review/chat'
+    | '/api/topic-review/writeback'
     | '/demo/guitars/$guitarId'
     | '/demo/guitars/'
     | '/demo/api/ai/chat'
@@ -203,6 +223,8 @@ export interface FileRouteTypes {
     | '/demo/ai-image'
     | '/demo/ai-structured'
     | '/demo/store'
+    | '/api/topic-review/chat'
+    | '/api/topic-review/writeback'
     | '/demo/guitars/$guitarId'
     | '/demo/guitars'
     | '/demo/api/ai/chat'
@@ -222,6 +244,8 @@ export interface FileRouteTypes {
     | '/demo/ai-image'
     | '/demo/ai-structured'
     | '/demo/store'
+    | '/api/topic-review/chat'
+    | '/api/topic-review/writeback'
     | '/demo/guitars/$guitarId'
     | '/demo/guitars/'
     | '/demo/api/ai/chat'
@@ -242,6 +266,8 @@ export interface RootRouteChildren {
   DemoAiImageRoute: typeof DemoAiImageRoute
   DemoAiStructuredRoute: typeof DemoAiStructuredRoute
   DemoStoreRoute: typeof DemoStoreRoute
+  ApiTopicReviewChatRoute: typeof ApiTopicReviewChatRoute
+  ApiTopicReviewWritebackRoute: typeof ApiTopicReviewWritebackRoute
   DemoGuitarsGuitarIdRoute: typeof DemoGuitarsGuitarIdRoute
   DemoGuitarsIndexRoute: typeof DemoGuitarsIndexRoute
   DemoApiAiChatRoute: typeof DemoApiAiChatRoute
@@ -337,6 +363,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DemoGuitarsGuitarIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/topic-review/writeback': {
+      id: '/api/topic-review/writeback'
+      path: '/api/topic-review/writeback'
+      fullPath: '/api/topic-review/writeback'
+      preLoaderRoute: typeof ApiTopicReviewWritebackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/topic-review/chat': {
+      id: '/api/topic-review/chat'
+      path: '/api/topic-review/chat'
+      fullPath: '/api/topic-review/chat'
+      preLoaderRoute: typeof ApiTopicReviewChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/demo/api/ai/tts': {
       id: '/demo/api/ai/tts'
       path: '/demo/api/ai/tts'
@@ -386,6 +426,8 @@ const rootRouteChildren: RootRouteChildren = {
   DemoAiImageRoute: DemoAiImageRoute,
   DemoAiStructuredRoute: DemoAiStructuredRoute,
   DemoStoreRoute: DemoStoreRoute,
+  ApiTopicReviewChatRoute: ApiTopicReviewChatRoute,
+  ApiTopicReviewWritebackRoute: ApiTopicReviewWritebackRoute,
   DemoGuitarsGuitarIdRoute: DemoGuitarsGuitarIdRoute,
   DemoGuitarsIndexRoute: DemoGuitarsIndexRoute,
   DemoApiAiChatRoute: DemoApiAiChatRoute,
