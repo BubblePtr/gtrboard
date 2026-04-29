@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useStore } from '@tanstack/react-store'
 
@@ -14,7 +14,9 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '#/components/ui/tabs'
 import { Textarea } from '#/components/ui/textarea'
 import {
-  generateAssistantReply,
+  appendTopicMessage,
+  applyTopicReviewWriteback,
+  getPreferences,
   getTodayTopics,
   getTopicPool,
   getTopicReviewSession,
@@ -32,6 +34,7 @@ import type {
   TopicPoolFilter,
   TopicReviewSession,
 } from '#/lib/gtr-dashboard-types'
+import type { TopicReviewWritebackResponse } from '#/lib/topic-review-writeback'
 import { cn } from '#/lib/utils'
 
 export const Route = createFileRoute('/topics')({
@@ -53,6 +56,12 @@ const quickPrompts = [
   '如果要采纳，封面图和开场脚本怎么做？',
 ]
 
+type LocalChatMessage = {
+  id: number | string
+  role: ReviewMessage['role']
+  content: string
+}
+
 function TopicsPage() {
   const state = useStore(gtrDashboardStore, (storeState) => storeState)
   const [view, setView] = useState<CandidateView>(state.candidateView)
@@ -69,13 +78,6 @@ function TopicsPage() {
     () => getTopicReviewSession(selectedId),
     [selectedId, state.messages, state.signals, state.topics],
   )
-
-  const sendMessage = (message: string) => {
-    const text = message.trim()
-    if (!text) return
-    generateAssistantReply(session.topic.id, text)
-    setInputValue('')
-  }
 
   const decide = (action: 'approved' | 'skipped') => {
     updateTopicAction(session.topic.id, action, decisionNote)
@@ -130,11 +132,11 @@ function TopicsPage() {
           onPoolFilterChange={setPoolFilter}
         />
         <ChatWorkspace
+          key={session.topic.id}
           session={session}
           inputValue={inputValue}
           contextOpen={contextOpen}
           onInputChange={setInputValue}
-          onSend={sendMessage}
           onToggleContext={() => setContextOpen((open) => !open)}
         />
         {contextOpen ? (
@@ -288,17 +290,96 @@ function ChatWorkspace({
   inputValue,
   contextOpen,
   onInputChange,
-  onSend,
   onToggleContext,
 }: {
   session: TopicReviewSession
   inputValue: string
   contextOpen: boolean
   onInputChange: (value: string) => void
-  onSend: (value: string) => void
   onToggleContext: () => void
 }) {
   const topic = session.topic
+  const pendingUserMessageRef = useRef('')
+  const abortControllerRef = useRef<AbortController | null>(null)
+  const [chatError, setChatError] = useState<string | null>(null)
+  const [streamingReply, setStreamingReply] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [isWritingBack, setIsWritingBack] = useState(false)
+  const displayMessages: LocalChatMessage[] = [
+    ...session.messages,
+    ...(streamingReply
+      ? [
+          {
+            id: 'streaming-assistant',
+            role: 'assistant' as const,
+            content: streamingReply,
+          },
+        ]
+      : []),
+  ]
+
+  const sendTopicMessage = async (value: string) => {
+    const text = value.trim()
+    if (!text || isLoading) return
+
+    setChatError(null)
+    pendingUserMessageRef.current = text
+    appendTopicMessage(topic.id, 'user', text)
+    onInputChange('')
+
+    const abortController = new AbortController()
+    abortControllerRef.current = abortController
+    setIsLoading(true)
+    setStreamingReply('')
+
+    try {
+      const assistantReply = await streamTopicReviewReply({
+        topicId: topic.id,
+        signal: abortController.signal,
+        onChunk: (content) => {
+          setStreamingReply(content)
+        },
+      })
+
+      if (!assistantReply.trim()) return
+
+      const savedMessage = appendTopicMessage(
+        topic.id,
+        'assistant',
+        assistantReply,
+      )
+      setStreamingReply('')
+      setIsWritingBack(true)
+      void persistTopicWriteback({
+        topicId: topic.id,
+        userMessage: pendingUserMessageRef.current,
+        assistantReply,
+        assistantMessageId: savedMessage.id,
+      })
+        .catch(() => {
+          setChatError('AI 已回复，但信号和草稿写回失败。')
+        })
+        .finally(() => {
+          setIsWritingBack(false)
+        })
+    } catch (error) {
+      if (isAbortError(error)) {
+        setStreamingReply('')
+      } else {
+        setChatError('AI 回复失败，请检查 OpenAI API key 或模型配置后重试。')
+      }
+    } finally {
+      setIsLoading(false)
+      abortControllerRef.current = null
+    }
+  }
+
+  const stop = () => {
+    abortControllerRef.current?.abort()
+    abortControllerRef.current = null
+    setIsLoading(false)
+    setStreamingReply('')
+  }
 
   return (
     <Card className="min-h-[560px] rounded-lg border-slate-200 bg-white py-0 shadow-sm">
@@ -336,7 +417,8 @@ function ChatWorkspace({
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => onSend(prompt)}
+              onClick={() => void sendTopicMessage(prompt)}
+              disabled={isLoading}
             >
               {prompt}
             </Button>
@@ -344,9 +426,13 @@ function ChatWorkspace({
         </div>
 
         <div className="flex min-h-[300px] flex-1 flex-col gap-3 overflow-y-auto rounded-md border border-slate-200 bg-white p-3">
-          {session.messages.length > 0 ? (
-            session.messages.map((message) => (
-              <MessageBubble key={message.id} message={message} />
+          {displayMessages.length > 0 ? (
+            displayMessages.map((message) => (
+              <MessageBubble
+                key={message.id}
+                role={message.role}
+                content={message.content}
+              />
             ))
           ) : (
             <div className="grid min-h-64 place-items-center text-center">
@@ -366,7 +452,7 @@ function ChatWorkspace({
           className="flex flex-col gap-2"
           onSubmit={(event) => {
             event.preventDefault()
-            onSend(inputValue)
+            void sendTopicMessage(inputValue)
           }}
         >
           <Textarea
@@ -374,9 +460,23 @@ function ChatWorkspace({
             onChange={(event) => onInputChange(event.target.value)}
             placeholder="和 AI 讨论这个项目是否值得做、适合什么内容形式、需要哪些素材..."
             className="min-h-24 resize-none"
+            disabled={isLoading}
           />
-          <div className="flex justify-end">
-            <Button type="submit">发送</Button>
+          {chatError ? (
+            <p className="m-0 text-sm text-destructive">{chatError}</p>
+          ) : null}
+          {isWritingBack ? (
+            <p className="m-0 text-xs text-slate-500">正在沉淀信号和草稿...</p>
+          ) : null}
+          <div className="flex justify-end gap-2">
+            {isLoading ? (
+              <Button type="button" variant="outline" onClick={stop}>
+                停止
+              </Button>
+            ) : null}
+            <Button type="submit" disabled={isLoading || !inputValue.trim()}>
+              {isLoading ? '回复中...' : '发送'}
+            </Button>
           </div>
         </form>
       </CardContent>
@@ -507,8 +607,14 @@ function DraftTab({
   )
 }
 
-function MessageBubble({ message }: { message: ReviewMessage }) {
-  const isUser = message.role === 'user'
+function MessageBubble({
+  role,
+  content,
+}: {
+  role: 'user' | 'assistant'
+  content: string
+}) {
+  const isUser = role === 'user'
 
   return (
     <div className={cn('flex', isUser ? 'justify-end' : 'justify-start')}>
@@ -520,10 +626,104 @@ function MessageBubble({ message }: { message: ReviewMessage }) {
             : 'border border-slate-200 bg-slate-50 text-slate-700',
         )}
       >
-        {message.content}
+        {content}
       </div>
     </div>
   )
+}
+
+async function persistTopicWriteback({
+  topicId,
+  userMessage,
+  assistantReply,
+  assistantMessageId,
+}: {
+  topicId: number
+  userMessage: string
+  assistantReply: string
+  assistantMessageId: number
+}) {
+  const session = getTopicReviewSession(topicId)
+  const response = await fetch('/api/topic-review/writeback', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      topic: session.topic,
+      messages: session.messages,
+      preferences: getPreferences(),
+      userMessage,
+      assistantReply,
+    }),
+  })
+
+  if (!response.ok) {
+    throw new Error('Topic review writeback failed')
+  }
+
+  const writeback = (await response.json()) as TopicReviewWritebackResponse
+  applyTopicReviewWriteback(topicId, {
+    ...writeback,
+    messageId: assistantMessageId,
+  })
+}
+
+async function streamTopicReviewReply({
+  topicId,
+  signal,
+  onChunk,
+}: {
+  topicId: number
+  signal: AbortSignal
+  onChunk: (content: string) => void
+}) {
+  const session = getTopicReviewSession(topicId)
+  const response = await fetch('/api/topic-review/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    signal,
+    body: JSON.stringify({
+      topic: session.topic,
+      messages: session.messages,
+      preferences: getPreferences(),
+    }),
+  })
+
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response))
+  }
+
+  if (!response.body) {
+    throw new Error('Topic review chat response did not include a stream')
+  }
+
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let content = ''
+
+  while (true) {
+    const { value, done } = await reader.read()
+    if (done) break
+    content += decoder.decode(value, { stream: true })
+    onChunk(content)
+  }
+
+  content += decoder.decode()
+  onChunk(content)
+
+  return content
+}
+
+async function readErrorMessage(response: Response) {
+  try {
+    const body = (await response.json()) as { error?: string }
+    return body.error || 'Topic review chat request failed'
+  } catch {
+    return 'Topic review chat request failed'
+  }
+}
+
+function isAbortError(error: unknown) {
+  return error instanceof DOMException && error.name === 'AbortError'
 }
 
 function SignalRow({ signal }: { signal: ReviewSignal }) {

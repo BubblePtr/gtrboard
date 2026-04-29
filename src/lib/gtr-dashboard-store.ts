@@ -20,6 +20,7 @@ import type {
   TopicStats,
   Weight,
 } from '#/lib/gtr-dashboard-types'
+import type { TopicReviewWritebackResponse } from '#/lib/topic-review-writeback'
 
 export const gtrDashboardStore = new Store<DashboardState>(
   createInitialDashboardState(),
@@ -142,6 +143,73 @@ export function updateTopicContent(
       topic.id === topicId ? { ...topic, ...content } : topic,
     ),
   }))
+}
+
+export function appendTopicReviewSignals(
+  topicId: number,
+  signals: TopicReviewWritebackResponse['signals'],
+  messageId: number | null = null,
+) {
+  const topic = getRequiredTopic(topicId)
+  if (signals.length === 0) return
+
+  gtrDashboardStore.setState((state) => {
+    const nextSignals: ReviewSignal[] = []
+
+    for (const signal of signals) {
+      const label = signal.label.trim()
+      if (!label) continue
+      const exists = [...state.signals, ...nextSignals].some(
+        (item) =>
+          item.topic_id === topicId &&
+          item.signal_type === signal.signal_type &&
+          item.label === label,
+      )
+      if (exists) continue
+
+      nextSignals.push({
+        id: nextId([...state.signals, ...nextSignals]),
+        topic_id: topicId,
+        candidate_id: topic.candidate_id,
+        message_id: messageId,
+        signal_type: signal.signal_type,
+        label,
+        polarity: signal.polarity,
+        strength: clampSignalStrength(signal.strength),
+        created_at: new Date().toISOString(),
+      })
+    }
+
+    if (nextSignals.length === 0) return state
+
+    return {
+      ...state,
+      signals: [...state.signals, ...nextSignals],
+    }
+  })
+}
+
+export function applyTopicReviewWriteback(
+  topicId: number,
+  writeback: TopicReviewWritebackResponse & { messageId?: number | null },
+) {
+  getRequiredTopic(topicId)
+  appendTopicReviewSignals(topicId, writeback.signals, writeback.messageId ?? null)
+
+  const draftUpdates: TopicContentUpdate = {}
+  if (writeback.draftUpdates.tweet) {
+    draftUpdates.user_edited_draft_tweet = writeback.draftUpdates.tweet
+  }
+  if (writeback.draftUpdates.script) {
+    draftUpdates.user_edited_draft_script = writeback.draftUpdates.script
+  }
+  if (writeback.draftUpdates.outline) {
+    draftUpdates.user_edited_draft_outline = writeback.draftUpdates.outline
+  }
+
+  if (Object.keys(draftUpdates).length > 0) {
+    updateTopicContent(topicId, draftUpdates)
+  }
 }
 
 export function appendTopicMessage(
@@ -320,6 +388,11 @@ function getRequiredTopic(topicId: number): Topic {
 
 function nextId(items: Array<{ id: number }>) {
   return Math.max(0, ...items.map((item) => item.id)) + 1
+}
+
+function clampSignalStrength(strength: number) {
+  if (!Number.isFinite(strength)) return 0.5
+  return Math.max(0, Math.min(1, strength))
 }
 
 function extractSignals(
