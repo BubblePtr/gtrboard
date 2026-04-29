@@ -10,7 +10,9 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run --config vitest.config.ts",
-    "deploy": "npm run build && wrangler deploy"
+    "pipeline:run": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=services/pipeline/src python3 -m gtrboard_pipeline run --source legacy --output-dir public/pipeline-results",
+    "pipeline:test": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=services/pipeline/src python3 -m unittest discover -s services/pipeline/tests",
+    "deploy": "npx wrangler whoami && GTR_DEPLOY_TARGET=cloudflare npm run build && wrangler deploy"
   },
   "dependencies": {
     "@cloudflare/vite-plugin": "^1.26.0",

@@ -23,6 +23,7 @@ import { Route as DemoGuitarsIndexRouteImport } from './routes/demo/guitars/inde
 import { Route as DemoGuitarsGuitarIdRouteImport } from './routes/demo/guitars/$guitarId'
 import { Route as ApiTopicReviewWritebackRouteImport } from './routes/api.topic-review.writeback'
 import { Route as ApiTopicReviewChatRouteImport } from './routes/api.topic-review.chat'
+import { Route as ApiPipelineRunRouteImport } from './routes/api.pipeline.run'
 import { Route as DemoApiAiTtsRouteImport } from './routes/demo/api.ai.tts'
 import { Route as DemoApiAiTranscriptionRouteImport } from './routes/demo/api.ai.transcription'
 import { Route as DemoApiAiStructuredRouteImport } from './routes/demo/api.ai.structured'
@@ -99,6 +100,11 @@ const ApiTopicReviewChatRoute = ApiTopicReviewChatRouteImport.update({
   path: '/api/topic-review/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPipelineRunRoute = ApiPipelineRunRouteImport.update({
+  id: '/api/pipeline/run',
+  path: '/api/pipeline/run',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DemoApiAiTtsRoute = DemoApiAiTtsRouteImport.update({
   id: '/demo/api/ai/tts',
   path: '/demo/api/ai/tts',
@@ -136,6 +142,7 @@ export interface FileRoutesByFullPath {
   '/demo/ai-image': typeof DemoAiImageRoute
   '/demo/ai-structured': typeof DemoAiStructuredRoute
   '/demo/store': typeof DemoStoreRoute
+  '/api/pipeline/run': typeof ApiPipelineRunRoute
   '/api/topic-review/chat': typeof ApiTopicReviewChatRoute
   '/api/topic-review/writeback': typeof ApiTopicReviewWritebackRoute
   '/demo/guitars/$guitarId': typeof DemoGuitarsGuitarIdRoute
@@ -157,6 +164,7 @@ export interface FileRoutesByTo {
   '/demo/ai-image': typeof DemoAiImageRoute
   '/demo/ai-structured': typeof DemoAiStructuredRoute
   '/demo/store': typeof DemoStoreRoute
+  '/api/pipeline/run': typeof ApiPipelineRunRoute
   '/api/topic-review/chat': typeof ApiTopicReviewChatRoute
   '/api/topic-review/writeback': typeof ApiTopicReviewWritebackRoute
   '/demo/guitars/$guitarId': typeof DemoGuitarsGuitarIdRoute
@@ -179,6 +187,7 @@ export interface FileRoutesById {
   '/demo/ai-image': typeof DemoAiImageRoute
   '/demo/ai-structured': typeof DemoAiStructuredRoute
   '/demo/store': typeof DemoStoreRoute
+  '/api/pipeline/run': typeof ApiPipelineRunRoute
   '/api/topic-review/chat': typeof ApiTopicReviewChatRoute
   '/api/topic-review/writeback': typeof ApiTopicReviewWritebackRoute
   '/demo/guitars/$guitarId': typeof DemoGuitarsGuitarIdRoute
@@ -202,6 +211,7 @@ export interface FileRouteTypes {
     | '/demo/ai-image'
     | '/demo/ai-structured'
     | '/demo/store'
+    | '/api/pipeline/run'
     | '/api/topic-review/chat'
     | '/api/topic-review/writeback'
     | '/demo/guitars/$guitarId'
@@ -223,6 +233,7 @@ export interface FileRouteTypes {
     | '/demo/ai-image'
     | '/demo/ai-structured'
     | '/demo/store'
+    | '/api/pipeline/run'
     | '/api/topic-review/chat'
     | '/api/topic-review/writeback'
     | '/demo/guitars/$guitarId'
@@ -244,6 +255,7 @@ export interface FileRouteTypes {
     | '/demo/ai-image'
     | '/demo/ai-structured'
     | '/demo/store'
+    | '/api/pipeline/run'
     | '/api/topic-review/chat'
     | '/api/topic-review/writeback'
     | '/demo/guitars/$guitarId'
@@ -266,6 +278,7 @@ export interface RootRouteChildren {
   DemoAiImageRoute: typeof DemoAiImageRoute
   DemoAiStructuredRoute: typeof DemoAiStructuredRoute
   DemoStoreRoute: typeof DemoStoreRoute
+  ApiPipelineRunRoute: typeof ApiPipelineRunRoute
   ApiTopicReviewChatRoute: typeof ApiTopicReviewChatRoute
   ApiTopicReviewWritebackRoute: typeof ApiTopicReviewWritebackRoute
   DemoGuitarsGuitarIdRoute: typeof DemoGuitarsGuitarIdRoute
@@ -377,6 +390,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiTopicReviewChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/pipeline/run': {
+      id: '/api/pipeline/run'
+      path: '/api/pipeline/run'
+      fullPath: '/api/pipeline/run'
+      preLoaderRoute: typeof ApiPipelineRunRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/demo/api/ai/tts': {
       id: '/demo/api/ai/tts'
       path: '/demo/api/ai/tts'
@@ -426,6 +446,7 @@ const rootRouteChildren: RootRouteChildren = {
   DemoAiImageRoute: DemoAiImageRoute,
   DemoAiStructuredRoute: DemoAiStructuredRoute,
   DemoStoreRoute: DemoStoreRoute,
+  ApiPipelineRunRoute: ApiPipelineRunRoute,
   ApiTopicReviewChatRoute: ApiTopicReviewChatRoute,
   ApiTopicReviewWritebackRoute: ApiTopicReviewWritebackRoute,
   DemoGuitarsGuitarIdRoute: DemoGuitarsGuitarIdRoute,

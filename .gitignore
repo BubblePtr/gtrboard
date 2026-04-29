@@ -12,3 +12,8 @@ dist-ssr
 .vite
 __unconfig*
 todos.json
+__pycache__/
+*.pyc
+reports/
+public/pipeline-results/
+services/pipeline/artifacts/

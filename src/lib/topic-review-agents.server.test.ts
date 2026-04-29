@@ -17,10 +17,10 @@ describe('topic-review-agents server helpers', () => {
     process.env.OPENAI_MODEL = originalOpenAiModel
   })
 
-  it('uses OPENAI_MODEL when present and falls back to gpt-4o', () => {
+  it('uses OPENAI_MODEL when present and falls back to qwen', () => {
     delete process.env.OPENAI_MODEL
 
-    expect(getOpenAIModel()).toBe('gpt-4o')
+    expect(getOpenAIModel()).toBe('qwen3.6-max-preview')
 
     process.env.OPENAI_MODEL = 'gpt-4.1-mini'
 
@@ -28,7 +28,7 @@ describe('topic-review-agents server helpers', () => {
   })
 
   it('reports a missing OPENAI_API_KEY before creating topic review runs', async () => {
-    delete process.env.OPENAI_API_KEY
+    process.env.OPENAI_API_KEY = ''
 
     expect(requireOpenAIKey()).toBe(false)
 

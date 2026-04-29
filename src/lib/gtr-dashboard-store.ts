@@ -1,9 +1,6 @@
 import { Store } from '@tanstack/store'
 
-import {
-  createInitialDashboardState,
-  pipelineStageNames,
-} from '#/data/gtr-dashboard-fixtures'
+import { createInitialDashboardState } from '#/data/gtr-dashboard-initial-state'
 import type {
   ChatMessage,
   DashboardState,
@@ -20,11 +17,19 @@ import type {
   TopicStats,
   Weight,
 } from '#/lib/gtr-dashboard-types'
+import {
+  createPipelineRunFromArtifact,
+  createTopicsFromPipelineArtifact,
+  type PipelineArtifact,
+} from '#/lib/pipeline-result'
 import type { TopicReviewWritebackResponse } from '#/lib/topic-review-writeback'
 
 export const gtrDashboardStore = new Store<DashboardState>(
   createInitialDashboardState(),
 )
+
+const MIN_CANDIDATE_ID = 9000
+const MIN_PROFILE_ID = 7000
 
 export function resetGtrDashboardStore() {
   gtrDashboardStore.setState(() => createInitialDashboardState())
@@ -258,83 +263,42 @@ export function appendTopicMessage(
   return message as ReviewMessage
 }
 
-export function generateAssistantReply(topicId: number, userMessage: string) {
-  const topic = getRequiredTopic(topicId)
-  appendTopicMessage(topicId, 'user', userMessage)
+export function applyPipelineResult(
+  artifact: PipelineArtifact,
+  config: PipelineRunConfig,
+): PipelineRun {
+  const runId = nextId(gtrDashboardStore.state.pipelineRuns)
+  const topicIdStart = nextId(gtrDashboardStore.state.topics)
+  const candidateIdStart = nextCandidateId(gtrDashboardStore.state.topics)
+  const profileIdStart = nextProfileId(gtrDashboardStore.state.topics)
+  const run = createPipelineRunFromArtifact({
+    artifact,
+    config,
+    runId,
+  })
+  const topics = createTopicsFromPipelineArtifact({
+    artifact,
+    topicIdStart,
+    candidateIdStart,
+    profileIdStart,
+  })
 
-  const reply = [
-    `我会把 ${topic.project_name} 当作一个内容选题来评估。`,
-    `核心角度可以是：${topic.differentiation_angle ?? '先找出和同类项目的差异点'}`,
-    '建议先确认受众、冲突点和可视化素材，再决定是否采纳。',
-  ].join('\n\n')
+  gtrDashboardStore.setState((state) => {
+    const incomingUrls = new Set(topics.map((topic) => topic.github_url))
+    const existingTopics = state.topics.filter(
+      (topic) => !topic.github_url || !incomingUrls.has(topic.github_url),
+    )
 
-  appendTopicMessage(topicId, 'assistant', reply)
-  return reply
-}
-
-export function triggerPipeline(config: PipelineRunConfig): PipelineRun {
-  const runId =
-    Math.max(0, ...gtrDashboardStore.state.pipelineRuns.map((run) => run.id)) + 1
-  const startedAt = new Date().toISOString()
-  const run: PipelineRun = {
-    id: runId,
-    status: 'running',
-    projects_collected: Math.max(config.limit * 12, 24),
-    projects_analyzed: Math.max(config.limit * 4, 8),
-    topics_generated: config.limit,
-    triggered_by: 'manual',
-    started_at: startedAt,
-    finished_at: null,
-    error_log: null,
-    config: {
-      ...config,
-      languages: [...config.languages],
-    },
-    stages: pipelineStageNames.map((stageName, index) => ({
-      id: runId * 10 + index,
-      stage_name: stageName,
-      status: index === 0 ? 'running' : 'pending',
-      progress: index === 0 ? 35 : 0,
-      message:
-        index === 0
-          ? `Collecting ${config.limit} GitHub Trending candidates`
-          : null,
-      started_at: startedAt,
-      finished_at: null,
-    })),
-  }
-
-  gtrDashboardStore.setState((state) => ({
-    ...state,
-    activePipelineRunId: run.id,
-    pipelineRuns: [run, ...state.pipelineRuns],
-  }))
+    return {
+      ...state,
+      topics: [...topics, ...existingTopics],
+      selectedTopicId: topics[0]?.id ?? state.selectedTopicId,
+      activePipelineRunId: run.id,
+      pipelineRuns: [run, ...state.pipelineRuns],
+    }
+  })
 
   return run
-}
-
-export function advancePipelineRun(runId: number) {
-  const finishedAt = new Date().toISOString()
-
-  gtrDashboardStore.setState((state) => ({
-    ...state,
-    pipelineRuns: state.pipelineRuns.map((run) =>
-      run.id === runId
-        ? {
-            ...run,
-            status: 'success',
-            finished_at: finishedAt,
-            stages: run.stages.map((stage) => ({
-              ...stage,
-              status: 'complete',
-              progress: 100,
-              finished_at: finishedAt,
-              message: `${stage.stage_name} completed`,
-            })),
-          }
-        : run,
-    ),
-  }))
 }
 
 export function getPipelineRun(runId: number | null): PipelineRun | null {
@@ -388,6 +352,20 @@ function getRequiredTopic(topicId: number): Topic {
 
 function nextId(items: Array<{ id: number }>) {
   return Math.max(0, ...items.map((item) => item.id)) + 1
+}
+
+function nextCandidateId(topics: Topic[]) {
+  return Math.max(
+    MIN_CANDIDATE_ID,
+    ...topics.map((topic) => topic.candidate_id ?? 0),
+  ) + 1
+}
+
+function nextProfileId(topics: Topic[]) {
+  return Math.max(
+    MIN_PROFILE_ID,
+    ...topics.map((topic) => topic.profile_id ?? 0),
+  ) + 1
 }
 
 function clampSignalStrength(strength: number) {

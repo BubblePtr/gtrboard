@@ -32,7 +32,7 @@ function SettingsPage() {
       <section className="flex flex-col gap-2">
         <h1 className="m-0 text-2xl font-bold text-slate-950">设置</h1>
         <p className="m-0 max-w-2xl text-sm leading-6 text-slate-500">
-          保存内容定位、每日运行时间和 scoring 权重。V1 使用本地状态模拟，
+          保存内容定位、每日运行时间和 scoring 权重。V1 使用本地状态，
           后续可映射到 Python service 的 preferences API。
         </p>
       </section>

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import {
   appendTopicMessage,
+  applyPipelineResult,
   applyTopicReviewWriteback,
   getPipelineRun,
   getPipelineRuns,
@@ -12,19 +13,35 @@ import {
   getTopicStats,
   getWeights,
   resetGtrDashboardStore,
-  triggerPipeline,
   updatePreferences,
   updateTopicAction,
   updateTopicContent,
   updateWeights,
 } from './gtr-dashboard-store'
+import { createInitialDashboardState } from '#/data/gtr-dashboard-initial-state'
+import type { PipelineArtifact } from './pipeline-result'
 
 describe('gtrDashboardStore', () => {
   beforeEach(() => {
     resetGtrDashboardStore()
   })
 
+  it('starts without preloaded topics, messages, signals, or pipeline runs', () => {
+    expect(getTopicStats().total).toBe(0)
+    expect(getPipelineRuns()).toHaveLength(0)
+    expect(getTodayTopics()).toHaveLength(0)
+    expect(getTopicPool()).toHaveLength(0)
+  })
+
+  it('creates initial timestamps at runtime', () => {
+    const state = createInitialDashboardState()
+
+    expect(state.preferences.updated_at).not.toBe('2026-04-26T09:00:00.000Z')
+    expect(state.weights.updated_at).toBe(state.preferences.updated_at)
+  })
+
   it('updates topic stats and review state when approving or skipping topics', () => {
+    applySamplePipelineResult(2)
     const [firstTopic, secondTopic] = getTodayTopics(2)
     const initialStats = getTopicStats()
 
@@ -45,6 +62,7 @@ describe('gtrDashboardStore', () => {
   })
 
   it('keeps review sessions conversational and stores refined content', () => {
+    applySamplePipelineResult(1)
     const [topic] = getTodayTopics(1)
 
     appendTopicMessage(topic.id, 'user', '这个项目适合做短视频吗？')
@@ -63,6 +81,7 @@ describe('gtrDashboardStore', () => {
   })
 
   it('applies AI writeback signals and draft updates without replacing omitted drafts', () => {
+    applySamplePipelineResult(1)
     const [topic] = getTodayTopics(1)
 
     appendTopicMessage(topic.id, 'user', '帮我改成更适合短视频的脚本。')
@@ -106,6 +125,7 @@ describe('gtrDashboardStore', () => {
   })
 
   it('filters the topic pool by review state and action', () => {
+    applySamplePipelineResult(1)
     const [firstTopic] = getTodayTopics(1)
 
     updateTopicAction(firstTopic.id, 'approved', '作为本周主推')
@@ -119,25 +139,20 @@ describe('gtrDashboardStore', () => {
     expect(getTopicPool()).toHaveLength(getTopicStats().total)
   })
 
-  it('starts a simulated pipeline run with the expected stages', () => {
-    const run = triggerPipeline({
-      languages: ['typescript', 'python'],
-      limit: 8,
-      source: 'legacy',
-      model: 'qwen3.6-max-preview',
-    })
+  it('applies Python pipeline results to runs and topic candidates', () => {
+    const previousTotal = getTopicStats().total
+    const run = applySamplePipelineResult(1)
 
-    expect(run.status).toBe('running')
-    expect(run.triggered_by).toBe('manual')
-    expect(run.stages.map((stage) => stage.stage_name)).toEqual([
-      'collect',
-      'profile',
-      'strategize',
-      'curate',
-      'report',
-    ])
-    expect(getPipelineRun(run.id)?.id).toBe(run.id)
+    expect(run.status).toBe('success')
     expect(getPipelineRuns()[0].id).toBe(run.id)
+    expect(getPipelineRun(run.id)?.id).toBe(run.id)
+    expect(getTopicStats().total).toBe(previousTotal + 1)
+    expect(getTodayTopics(1)[0]).toMatchObject({
+      project_name: 'owner/agent-tool',
+      github_url: 'https://github.com/owner/agent-tool',
+      review_state: '未聊',
+      action: 'pending',
+    })
   })
 
   it('updates preferences and scoring weights without replacing omitted fields', () => {
@@ -165,3 +180,58 @@ describe('gtrDashboardStore', () => {
     })
   })
 })
+
+function applySamplePipelineResult(topicCount: number) {
+  return applyPipelineResult(createSampleArtifact(topicCount), {
+    languages: ['python'],
+    limit: topicCount,
+    top_n: topicCount,
+    source: 'legacy',
+    model: 'local-heuristic',
+  })
+}
+
+function createSampleArtifact(topicCount: number): PipelineArtifact {
+  return {
+    status: 'success',
+    projects_collected: topicCount,
+    projects_analyzed: topicCount,
+    topics_generated: topicCount,
+    report_path: 'reports/daily_report_2026-04-29.md',
+    error_log: null,
+    started_at: '2026-04-29T08:00:00.000Z',
+    finished_at: '2026-04-29T08:00:01.000Z',
+    stages: ['collect', 'profile', 'strategize', 'curate', 'report'].map(
+      (name) => ({
+        name: name as PipelineArtifact['stages'][number]['name'],
+        status: 'complete',
+        progress: 100,
+        message: `${name} complete`,
+        started_at: '2026-04-29T08:00:00.000Z',
+        finished_at: '2026-04-29T08:00:01.000Z',
+      }),
+    ),
+    topics: Array.from({ length: topicCount }, (_, index) => ({
+      rank: index + 1,
+      final_score: 9.9 - index,
+      selection_reason: '契合本地 AI 和 agent 选题定位',
+      project_name:
+        index === 0 ? 'owner/agent-tool' : `owner/agent-tool-${index + 1}`,
+      github_url:
+        index === 0
+          ? 'https://github.com/owner/agent-tool'
+          : `https://github.com/owner/agent-tool-${index + 1}`,
+      language: 'Python',
+      stars: 12345 - index,
+      why_post: '值得做选题',
+      differentiation_angle: '聚焦真实工作流',
+      target_audience: '开发者',
+      engagement_estimate: 'high',
+      draft_tweet: 'tweet',
+      draft_script: 'script',
+      draft_outline: 'outline',
+      tags: ['Python', 'AI'],
+      generation_status: 'complete',
+    })),
+  }
+}

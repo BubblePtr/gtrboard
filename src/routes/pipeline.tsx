@@ -14,12 +14,12 @@ import {
 import { Input } from '#/components/ui/input'
 import { Progress } from '#/components/ui/progress'
 import {
-  advancePipelineRun,
   getPipelineRun,
   getPipelineRuns,
   gtrDashboardStore,
-  triggerPipeline,
 } from '#/lib/gtr-dashboard-store'
+import { PIPELINE_DEFAULT_CONFIG } from '#/lib/pipeline-default-config'
+import { loadLatestPipelineResult } from '#/lib/pipeline-client'
 import type {
   PipelineRun,
   PipelineRunConfig,
@@ -42,26 +42,45 @@ function PipelinePage() {
   const state = useStore(gtrDashboardStore, (storeState) => storeState)
   const [config, setConfig] = useState({
     languages: '',
-    limit: 10,
-    source: 'legacy' as PipelineRunConfig['source'],
-    model: 'qwen3.6-max-preview',
+    limit: PIPELINE_DEFAULT_CONFIG.limit,
+    source: PIPELINE_DEFAULT_CONFIG.source as PipelineRunConfig['source'],
+    model: PIPELINE_DEFAULT_CONFIG.model,
   })
+  const [isRunning, setIsRunning] = useState(false)
+  const [runError, setRunError] = useState<string | null>(null)
 
   const runs = getPipelineRuns()
   const activeRun = getPipelineRun(state.activePipelineRunId)
   const activeRunProgress = useMemo(() => getRunProgress(activeRun), [activeRun])
 
-  const handleRun = () => {
+  const handleRun = async () => {
     const languages = config.languages
       .split(',')
       .map((item) => item.trim())
       .filter(Boolean)
-    triggerPipeline({
-      languages: languages.length > 0 ? languages : [''],
-      limit: config.limit,
-      source: config.source,
-      model: config.model,
-    })
+    const limit = Number(config.limit)
+    if (!Number.isInteger(limit) || limit < 1 || limit > 50) {
+      setRunError('数量限制必须是 1 到 50 之间的整数')
+      return
+    }
+
+    setIsRunning(true)
+    setRunError(null)
+
+    try {
+      await loadLatestPipelineResult({
+        ...PIPELINE_DEFAULT_CONFIG,
+        languages: languages.length > 0 ? languages : [''],
+        limit,
+        top_n: limit,
+        source: config.source,
+        model: config.model,
+      })
+    } catch (error) {
+      setRunError(error instanceof Error ? error.message : 'Pipeline 运行失败')
+    } finally {
+      setIsRunning(false)
+    }
   }
 
   return (
@@ -70,7 +89,7 @@ function PipelinePage() {
         <h1 className="m-0 text-2xl font-bold text-slate-950">Pipeline</h1>
         <p className="m-0 max-w-2xl text-sm leading-6 text-slate-500">
           V1 保留旧项目的运行配置和阶段进度体验；实际 Python discovery、
-          research、scoring 和 generation 仍待接入后台服务。
+          research、scoring 和 generation 现在会写回选题管理和运行历史。
         </p>
       </section>
 
@@ -78,7 +97,7 @@ function PipelinePage() {
         <Card className="rounded-lg border-slate-200 bg-white py-0 shadow-sm">
           <CardHeader className="border-b border-slate-200 px-4 py-3">
             <CardTitle>运行配置</CardTitle>
-            <CardDescription>触发一次模拟 discovery pipeline</CardDescription>
+            <CardDescription>触发一次本地 Python discovery pipeline</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-4 p-4">
             <Field label="语言（逗号分隔）">
@@ -113,14 +132,12 @@ function PipelinePage() {
                 className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
               >
                 <option value="legacy">Legacy (GitHub Trending)</option>
-                <option value="tavily">Tavily</option>
-                <option value="exa">Exa</option>
-                <option value="both">Both</option>
               </select>
             </Field>
             <Field label="模型">
               <Input
                 value={config.model}
+                placeholder="qwen3.6-max-preview"
                 onChange={(event) =>
                   setConfig({ ...config, model: event.target.value })
                 }
@@ -129,10 +146,15 @@ function PipelinePage() {
             <Button
               type="button"
               onClick={handleRun}
-              disabled={activeRun?.status === 'running'}
+              disabled={isRunning}
             >
-              {activeRun?.status === 'running' ? '运行中...' : '启动 Pipeline'}
+              {isRunning ? '运行中...' : '启动 Pipeline'}
             </Button>
+            {runError ? (
+              <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
+                {runError}
+              </div>
+            ) : null}
           </CardContent>
         </Card>
 
@@ -165,17 +187,6 @@ function PipelinePage() {
                     <StageRow key={stage.id} stage={stage} />
                   ))}
                 </div>
-                {activeRun.status === 'running' ? (
-                  <div className="flex justify-end">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => advancePipelineRun(activeRun.id)}
-                    >
-                      模拟完成
-                    </Button>
-                  </div>
-                ) : null}
                 {activeRun.error_log ? (
                   <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
                     {activeRun.error_log}

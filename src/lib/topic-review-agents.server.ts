@@ -1,10 +1,11 @@
-import { Agent } from '@openai/agents'
+import { Agent, setOpenAIAPI } from '@openai/agents'
 
 import type {
   Preference,
   ReviewMessage,
   Topic,
 } from '#/lib/gtr-dashboard-types'
+import { loadLocalEnv } from '#/lib/local-env.server'
 import { topicReviewWritebackSchema } from '#/lib/topic-review-writeback'
 
 export type TopicReviewChatRequest = {
@@ -21,11 +22,20 @@ export type TopicReviewWritebackRequest = {
   assistantReply: string
 }
 
+const DEFAULT_AGENT_MODEL = 'qwen3.6-max-preview'
+
+export function configureOpenAICompatibleAgents() {
+  loadLocalEnv()
+  setOpenAIAPI('chat_completions')
+}
+
 export function getOpenAIModel() {
-  return process.env.OPENAI_MODEL || 'gpt-4o'
+  configureOpenAICompatibleAgents()
+  return process.env.OPENAI_MODEL || DEFAULT_AGENT_MODEL
 }
 
 export function requireOpenAIKey() {
+  configureOpenAICompatibleAgents()
   return Boolean(process.env.OPENAI_API_KEY)
 }
 
