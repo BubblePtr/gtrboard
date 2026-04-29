@@ -1,12 +1,13 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { readFileSync, statSync } from 'node:fs'
 import path from 'node:path'
 
+// Support `.env.loacl` for compatibility with an early local setup typo.
 const LOCAL_ENV_FILES = ['.env.local', '.env.loacl', '.env']
 
 export function loadLocalEnv(cwd = process.cwd()) {
   for (const fileName of LOCAL_ENV_FILES) {
     const envPath = path.join(cwd, fileName)
-    if (!existsSync(envPath)) continue
+    if (!statSync(envPath, { throwIfNoEntry: false })?.isFile()) continue
 
     for (const rawLine of readFileSync(envPath, 'utf8').split(/\r?\n/)) {
       const line = rawLine.trim()

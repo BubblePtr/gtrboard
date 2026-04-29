@@ -18,6 +18,7 @@ import {
   updateTopicContent,
   updateWeights,
 } from './gtr-dashboard-store'
+import { createInitialDashboardState } from '#/data/gtr-dashboard-initial-state'
 import type { PipelineArtifact } from './pipeline-result'
 
 describe('gtrDashboardStore', () => {
@@ -30,6 +31,13 @@ describe('gtrDashboardStore', () => {
     expect(getPipelineRuns()).toHaveLength(0)
     expect(getTodayTopics()).toHaveLength(0)
     expect(getTopicPool()).toHaveLength(0)
+  })
+
+  it('creates initial timestamps at runtime', () => {
+    const state = createInitialDashboardState()
+
+    expect(state.preferences.updated_at).not.toBe('2026-04-26T09:00:00.000Z')
+    expect(state.weights.updated_at).toBe(state.preferences.updated_at)
   })
 
   it('updates topic stats and review state when approving or skipping topics', () => {
@@ -177,6 +185,7 @@ function applySamplePipelineResult(topicCount: number) {
   return applyPipelineResult(createSampleArtifact(topicCount), {
     languages: ['python'],
     limit: topicCount,
+    top_n: topicCount,
     source: 'legacy',
     model: 'local-heuristic',
   })

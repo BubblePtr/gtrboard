@@ -21,6 +21,15 @@ export async function loadLatestPipelineResult(config: PipelineRunConfig) {
     throw new Error(body?.error || 'Pipeline run failed')
   }
 
-  const body = (await response.json()) as PipelineRunResponse
+  const body = await response.json()
+  if (!isPipelineRunResponse(body)) {
+    throw new Error('Pipeline run returned invalid payload')
+  }
   return applyPipelineResult(body.artifact, body.config)
+}
+
+function isPipelineRunResponse(body: unknown): body is PipelineRunResponse {
+  if (!body || typeof body !== 'object') return false
+  const value = body as Record<string, unknown>
+  return Boolean(value.artifact && value.config)
 }

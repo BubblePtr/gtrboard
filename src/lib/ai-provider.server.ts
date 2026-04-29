@@ -13,7 +13,9 @@ export function getTextAdapter() {
   }
 
   if (process.env.OPENAI_API_KEY) {
-    return openaiText(process.env.OPENAI_MODEL || 'qwen3.6-max-preview')
+    return openaiText(process.env.OPENAI_MODEL || 'qwen3.6-max-preview', {
+      baseURL: process.env.OPENAI_BASE_URL,
+    })
   }
 
   if (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY) {

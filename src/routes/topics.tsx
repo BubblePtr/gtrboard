@@ -20,6 +20,7 @@ import {
   gtrDashboardStore,
   selectTopic,
 } from '#/lib/gtr-dashboard-store'
+import { PIPELINE_DEFAULT_CONFIG } from '#/lib/pipeline-default-config'
 import { loadLatestPipelineResult } from '#/lib/pipeline-client'
 import type {
   CandidateView,
@@ -92,10 +93,9 @@ function TopicsPage() {
             setRediscoverError(null)
             try {
               await loadLatestPipelineResult({
-                languages: [''],
+                ...PIPELINE_DEFAULT_CONFIG,
                 limit: 5,
-                source: 'legacy',
-                model: 'qwen3.6-max-preview',
+                top_n: 5,
               })
             } catch (error) {
               setRediscoverError(

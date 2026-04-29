@@ -65,7 +65,7 @@ OPENAI_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 OPENAI_MODEL=qwen3.6-max-preview
 ```
 
-本地 CLI 会读取 `.env.local`，也兼容 `.env.loacl` 这个临时拼写。如果没有配置 `OPENAI_API_KEY` 或 LLM 调用失败，会降级到本地启发式评分和模板选题，并在 artifact 中标记 `analysis_status=degraded` 或 `generation_status=degraded`。
+本地 CLI 会读取 `.env.local`；`.env.loacl` 仅作为早期本地配置 typo 的兼容入口保留，后续应统一迁移到 `.env.local`。如果没有配置 `OPENAI_API_KEY` 或 LLM 调用失败，会降级到本地启发式评分和模板选题，并在 artifact 中标记 `analysis_status=degraded` 或 `generation_status=degraded`。
 
 ## 验证
 

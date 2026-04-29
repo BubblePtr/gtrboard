@@ -4,7 +4,7 @@ import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Protocol
 
 from gtrboard_pipeline.llm_client import DEFAULT_MODEL
 from gtrboard_pipeline.collectors import FixtureCollector, LegacyTrendingCollector
@@ -23,6 +23,22 @@ from gtrboard_pipeline.models import (
 from gtrboard_pipeline.scoring import ScoringWeights, score_topic
 
 PipelineSource = Literal["fixtures", "legacy"]
+
+
+class ProfileScorer(Protocol):
+    async def analyze(
+        self,
+        project: RawProject,
+        fallback_profile: ProjectProfile,
+    ) -> ProjectProfile: ...
+
+
+class Strategist(Protocol):
+    async def generate(
+        self,
+        profile: ProjectProfile,
+        fallback_topic: TopicSuggestion,
+    ) -> TopicSuggestion: ...
 
 
 @dataclass(frozen=True)
@@ -52,8 +68,8 @@ class PipelineOrchestrator:
     def __init__(
         self,
         config: PipelineConfig | None = None,
-        profile_scorer: object | None = None,
-        strategist: object | None = None,
+        profile_scorer: ProfileScorer | None = None,
+        strategist: Strategist | None = None,
     ) -> None:
         self.config = config or PipelineConfig()
         self.weights = ScoringWeights()

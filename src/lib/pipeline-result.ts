@@ -74,7 +74,7 @@ export function createPipelineRunFromArtifact({
       languages: [...config.languages],
     },
     stages: artifact.stages.map((stage, index) => ({
-      id: runId * 10 + index,
+      id: runId * 100000 + index,
       stage_name: stage.name,
       status: stage.status,
       progress: stage.progress,

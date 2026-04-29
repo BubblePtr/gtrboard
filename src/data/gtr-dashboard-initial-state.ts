@@ -5,8 +5,6 @@ import type {
   Weight,
 } from '#/lib/gtr-dashboard-types'
 
-const now = '2026-04-26T09:00:00.000Z'
-
 export const pipelineStageNames: PipelineStageName[] = [
   'collect',
   'profile',
@@ -23,7 +21,7 @@ export const defaultPreferences: Preference = {
   local_ai_weight: 0.35,
   daily_run_time: '09:00',
   auto_publish: false,
-  updated_at: now,
+  updated_at: '',
 }
 
 export const defaultWeights: Weight = {
@@ -33,18 +31,20 @@ export const defaultWeights: Weight = {
   local_ai_weight: 0.18,
   doc_quality_weight: 0.12,
   engagement_weight: 0.16,
-  updated_at: now,
+  updated_at: '',
 }
 
 export function createInitialDashboardState(): DashboardState {
+  const now = new Date().toISOString()
+
   return {
     topics: [],
     messages: [],
     signals: [],
     pipelineRuns: [],
     activePipelineRunId: null,
-    preferences: { ...defaultPreferences },
-    weights: { ...defaultWeights },
+    preferences: { ...defaultPreferences, updated_at: now },
+    weights: { ...defaultWeights, updated_at: now },
     selectedTopicId: null,
     candidateView: 'today',
     poolFilter: undefined,

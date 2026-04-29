@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from html.parser import HTMLParser
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 from urllib.request import Request, urlopen
 
 from gtrboard_pipeline.fixtures import FIXTURE_PROJECTS
@@ -57,6 +57,8 @@ class LegacyTrendingCollector:
         return projects
 
     def _fetch(self, url: str) -> str:
+        if urlparse(url).scheme != "https":
+            raise ValueError(f"Only HTTPS URLs are allowed: {url}")
         request = Request(
             url,
             headers={

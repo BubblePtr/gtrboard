@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from gtrboard_pipeline.collectors import TrendingHTMLParser
+from gtrboard_pipeline.collectors import FixtureCollector, LegacyTrendingCollector, TrendingHTMLParser
 from gtrboard_pipeline.env import load_pipeline_env
 from gtrboard_pipeline.llm_profile_scorer import OpenAICompatibleProfileScorer
 from gtrboard_pipeline.llm_strategist import OpenAICompatibleStrategist
@@ -68,6 +68,9 @@ class PipelineTest(TestCase):
             self.assertTrue(artifact_path.exists())
             artifact = json.loads(artifact_path.read_text())
             self.assertEqual("success", artifact["status"])
+            self.assertEqual(result.report.report_summary, artifact["report_summary"])
+            self.assertEqual(3, artifact["total_analyzed"])
+            self.assertEqual(2, artifact["total_selected"])
             self.assertEqual(2, len(artifact["topics"]))
 
     def test_unknown_source_fails_fast(self):
@@ -247,3 +250,26 @@ class PipelineTest(TestCase):
 
                 self.assertEqual("from_typo_file", os.environ["OPENAI_API_KEY"])
                 self.assertEqual("already-set", os.environ["OPENAI_MODEL"])
+
+    def test_env_loader_ignores_directories_with_env_file_names(self):
+        with TemporaryDirectory() as tmpdir:
+            (Path(tmpdir) / ".env.local").mkdir()
+
+            with patch.dict("os.environ", {}, clear=True):
+                load_pipeline_env(Path(tmpdir))
+
+            self.assertNotIn("OPENAI_API_KEY", os.environ)
+
+    def test_fixture_collector_uses_pgvector_language_for_filtering(self):
+        projects = asyncio.run(FixtureCollector(["c"], limit=10).collect())
+
+        self.assertIn(
+            "https://github.com/pgvector/pgvector",
+            [project.github_url for project in projects],
+        )
+
+    def test_legacy_collector_rejects_non_https_fetch_urls(self):
+        collector = LegacyTrendingCollector([""], limit=1)
+
+        with self.assertRaisesRegex(ValueError, "Only HTTPS URLs"):
+            collector._fetch("file:///tmp/not-a-trending-page")

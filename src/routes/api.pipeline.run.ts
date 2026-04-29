@@ -5,8 +5,7 @@ import path from 'node:path'
 import { createFileRoute } from '@tanstack/react-router'
 
 import type { PipelineRunConfig } from '#/lib/gtr-dashboard-types'
-
-const DEFAULT_PIPELINE_MODEL = 'qwen3.6-max-preview'
+import { DEFAULT_PIPELINE_MODEL } from '#/lib/pipeline-default-config'
 
 export const Route = createFileRoute('/api/pipeline/run')({
   server: {
@@ -34,9 +33,13 @@ function normalizePipelineConfig(body: Partial<PipelineRunConfig>): PipelineRunC
     ? body.languages.filter((item): item is string => typeof item === 'string')
     : ['']
 
+  const limit = clampNumber(body.limit, 1, 50, 10)
+  const topN = Math.min(clampNumber(body.top_n ?? body.limit, 1, 50, limit), limit)
+
   return {
     languages: languages.length > 0 ? languages : [''],
-    limit: clampNumber(body.limit, 1, 50, 10),
+    limit,
+    top_n: topN,
     source: 'legacy',
     model: body.model || process.env.OPENAI_MODEL || DEFAULT_PIPELINE_MODEL,
   }
@@ -58,7 +61,7 @@ async function runPythonPipeline(config: PipelineRunConfig) {
     '--limit',
     String(config.limit),
     '--top-n',
-    String(config.limit),
+    String(config.top_n ?? config.limit),
     '--model',
     config.model,
     '--output-dir',
@@ -93,7 +96,11 @@ function spawnProcess(
   return new Promise<void>((resolve, reject) => {
     const child = spawn(command, args, options)
     let stderr = ''
+    let stdout = ''
 
+    child.stdout?.on('data', (chunk: Buffer) => {
+      stdout += chunk.toString()
+    })
     child.stderr?.on('data', (chunk: Buffer) => {
       stderr += chunk.toString()
     })
@@ -103,7 +110,11 @@ function spawnProcess(
         resolve()
         return
       }
-      reject(new Error(stderr.trim() || `Pipeline exited with code ${code}`))
+      const output = [stderr, stdout]
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .join('\n')
+      reject(new Error(output || `Pipeline exited with code ${code}`))
     })
   })
 }

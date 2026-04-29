@@ -24,7 +24,7 @@ FIXTURE_PROJECTS = [
         github_url="https://github.com/pgvector/pgvector",
         owner="pgvector",
         name="pgvector",
-        language="TypeScript",
+        language="C",
         stars=17100,
         description="Open-source vector similarity search for Postgres workflows.",
     ),

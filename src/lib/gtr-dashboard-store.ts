@@ -28,6 +28,9 @@ export const gtrDashboardStore = new Store<DashboardState>(
   createInitialDashboardState(),
 )
 
+const MIN_CANDIDATE_ID = 9000
+const MIN_PROFILE_ID = 7000
+
 export function resetGtrDashboardStore() {
   gtrDashboardStore.setState(() => createInitialDashboardState())
 }
@@ -352,11 +355,17 @@ function nextId(items: Array<{ id: number }>) {
 }
 
 function nextCandidateId(topics: Topic[]) {
-  return Math.max(9000, ...topics.map((topic) => topic.candidate_id ?? 0)) + 1
+  return Math.max(
+    MIN_CANDIDATE_ID,
+    ...topics.map((topic) => topic.candidate_id ?? 0),
+  ) + 1
 }
 
 function nextProfileId(topics: Topic[]) {
-  return Math.max(7000, ...topics.map((topic) => topic.profile_id ?? 0)) + 1
+  return Math.max(
+    MIN_PROFILE_ID,
+    ...topics.map((topic) => topic.profile_id ?? 0),
+  ) + 1
 }
 
 function clampSignalStrength(strength: number) {

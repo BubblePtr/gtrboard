@@ -11,7 +11,7 @@ def load_pipeline_env(root: Path | None = None) -> None:
     repo_root = root or Path(__file__).resolve().parents[4]
     for name in ENV_FILE_NAMES:
         env_path = repo_root / name
-        if env_path.exists():
+        if env_path.is_file():
             _load_env_file(env_path)
 
 

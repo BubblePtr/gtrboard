@@ -127,6 +127,7 @@ export interface PipelineRun {
 export interface PipelineRunConfig {
   languages: string[]
   limit: number
+  top_n?: number
   source: 'legacy'
   model: string
 }

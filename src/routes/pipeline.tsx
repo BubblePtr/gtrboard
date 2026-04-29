@@ -18,6 +18,7 @@ import {
   getPipelineRuns,
   gtrDashboardStore,
 } from '#/lib/gtr-dashboard-store'
+import { PIPELINE_DEFAULT_CONFIG } from '#/lib/pipeline-default-config'
 import { loadLatestPipelineResult } from '#/lib/pipeline-client'
 import type {
   PipelineRun,
@@ -41,9 +42,9 @@ function PipelinePage() {
   const state = useStore(gtrDashboardStore, (storeState) => storeState)
   const [config, setConfig] = useState({
     languages: '',
-    limit: 10,
-    source: 'legacy' as PipelineRunConfig['source'],
-    model: 'qwen3.6-max-preview',
+    limit: PIPELINE_DEFAULT_CONFIG.limit,
+    source: PIPELINE_DEFAULT_CONFIG.source as PipelineRunConfig['source'],
+    model: PIPELINE_DEFAULT_CONFIG.model,
   })
   const [isRunning, setIsRunning] = useState(false)
   const [runError, setRunError] = useState<string | null>(null)
@@ -57,13 +58,21 @@ function PipelinePage() {
       .split(',')
       .map((item) => item.trim())
       .filter(Boolean)
+    const limit = Number(config.limit)
+    if (!Number.isInteger(limit) || limit < 1 || limit > 50) {
+      setRunError('数量限制必须是 1 到 50 之间的整数')
+      return
+    }
+
     setIsRunning(true)
     setRunError(null)
 
     try {
       await loadLatestPipelineResult({
+        ...PIPELINE_DEFAULT_CONFIG,
         languages: languages.length > 0 ? languages : [''],
-        limit: config.limit,
+        limit,
+        top_n: limit,
         source: config.source,
         model: config.model,
       })

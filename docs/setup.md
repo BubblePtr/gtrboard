@@ -43,4 +43,4 @@ npm run pipeline:test
 
 默认 `npm run dev` 使用本地 Node SSR，便于 API route 调用 Python。Cloudflare runtime 仅在 `npm run deploy` 时通过 `GTR_DEPLOY_TARGET=cloudflare` 启用。
 
-LLM 评分和选题生成读取 `OPENAI_API_KEY`、`OPENAI_BASE_URL` 和 `OPENAI_MODEL`。`OPENAI_BASE_URL` 可指向 OpenAI-compatible provider；MVP 默认模型为 `qwen3.6-max-preview`。本地 CLI 会读取 `.env.local`，也兼容 `.env.loacl` 这个临时拼写。
+LLM 评分和选题生成读取 `OPENAI_API_KEY`、`OPENAI_BASE_URL` 和 `OPENAI_MODEL`。`OPENAI_BASE_URL` 可指向 OpenAI-compatible provider；MVP 默认模型为 `qwen3.6-max-preview`。本地 CLI 会读取 `.env.local`；`.env.loacl` 仅作为早期本地配置 typo 的兼容入口保留，后续应统一迁移到 `.env.local`。
