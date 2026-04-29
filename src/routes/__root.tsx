@@ -119,7 +119,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
           variant="ghost"
           size="icon-xs"
           aria-label={collapsed ? '展开侧边栏' : '收起侧边栏'}
-          className="size-6 rounded-none p-0 text-slate-500 hover:bg-transparent hover:text-slate-950"
+          className="hidden size-6 rounded-none p-0 text-slate-500 hover:bg-transparent hover:text-slate-950 lg:inline-flex"
           onClick={() => setCollapsed((value) => !value)}
         >
           <SidebarIcon
