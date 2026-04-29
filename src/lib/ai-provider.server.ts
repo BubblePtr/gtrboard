@@ -3,13 +3,17 @@ import { geminiText } from '@tanstack/ai-gemini'
 import { ollamaText } from '@tanstack/ai-ollama'
 import { openaiText } from '@tanstack/ai-openai'
 
+import { loadLocalEnv } from '#/lib/local-env.server'
+
 export function getTextAdapter() {
+  loadLocalEnv()
+
   if (process.env.ANTHROPIC_API_KEY) {
     return anthropicText(process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5')
   }
 
   if (process.env.OPENAI_API_KEY) {
-    return openaiText(process.env.OPENAI_MODEL || 'gpt-4o')
+    return openaiText(process.env.OPENAI_MODEL || 'qwen3.6-max-preview')
   }
 
   if (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY) {

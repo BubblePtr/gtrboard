@@ -127,7 +127,7 @@ export interface PipelineRun {
 export interface PipelineRunConfig {
   languages: string[]
   limit: number
-  source: 'tavily' | 'exa' | 'both' | 'legacy'
+  source: 'legacy'
   model: string
 }
 
@@ -160,7 +160,7 @@ export interface DashboardState {
   activePipelineRunId: number | null
   preferences: Preference
   weights: Weight
-  selectedTopicId: number
+  selectedTopicId: number | null
   candidateView: CandidateView
   poolFilter: TopicPoolFilter | undefined
 }

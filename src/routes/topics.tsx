@@ -19,8 +19,8 @@ import {
   getTopicReviewSession,
   gtrDashboardStore,
   selectTopic,
-  triggerPipeline,
 } from '#/lib/gtr-dashboard-store'
+import { loadLatestPipelineResult } from '#/lib/pipeline-client'
 import type {
   CandidateView,
   ReviewMessage,
@@ -63,11 +63,13 @@ function TopicsPage() {
     state.poolFilter,
   )
   const [inputValue, setInputValue] = useState('')
+  const [isRediscovering, setIsRediscovering] = useState(false)
+  const [rediscoverError, setRediscoverError] = useState<string | null>(null)
 
   const candidates = view === 'today' ? getTodayTopics(8) : getTopicPool(poolFilter)
   const selectedId = state.selectedTopicId
   const session = useMemo(
-    () => getTopicReviewSession(selectedId),
+    () => (selectedId ? getTopicReviewSession(selectedId) : null),
     [selectedId, state.messages, state.signals, state.topics],
   )
 
@@ -83,21 +85,37 @@ function TopicsPage() {
           poolFilter={poolFilter}
           onViewChange={setView}
           onPoolFilterChange={setPoolFilter}
-          onRediscover={() =>
-            triggerPipeline({
-              languages: [''],
-              limit: 5,
-              source: 'legacy',
-              model: 'qwen3.6-max-preview',
-            })
-          }
+          isRediscovering={isRediscovering}
+          rediscoverError={rediscoverError}
+          onRediscover={async () => {
+            setIsRediscovering(true)
+            setRediscoverError(null)
+            try {
+              await loadLatestPipelineResult({
+                languages: [''],
+                limit: 5,
+                source: 'legacy',
+                model: 'qwen3.6-max-preview',
+              })
+            } catch (error) {
+              setRediscoverError(
+                error instanceof Error ? error.message : '重新发现失败',
+              )
+            } finally {
+              setIsRediscovering(false)
+            }
+          }}
         />
-        <ChatWorkspace
-          key={session.topic.id}
-          session={session}
-          inputValue={inputValue}
-          onInputChange={setInputValue}
-        />
+        {session ? (
+          <ChatWorkspace
+            key={session.topic.id}
+            session={session}
+            inputValue={inputValue}
+            onInputChange={setInputValue}
+          />
+        ) : (
+          <EmptyTopicWorkspace />
+        )}
       </section>
     </div>
   )
@@ -111,14 +129,18 @@ function CandidateList({
   onViewChange,
   onPoolFilterChange,
   onRediscover,
+  isRediscovering,
+  rediscoverError,
 }: {
   candidates: Topic[]
-  selectedTopicId: number
+  selectedTopicId: number | null
   view: CandidateView
   poolFilter: TopicPoolFilter | undefined
   onViewChange: (view: CandidateView) => void
   onPoolFilterChange: (filter: TopicPoolFilter | undefined) => void
   onRediscover: () => void
+  isRediscovering: boolean
+  rediscoverError: string | null
 }) {
   return (
     <Card className="h-full overflow-hidden rounded-[24px] border-slate-200/70 bg-white py-0 shadow-none">
@@ -141,10 +163,21 @@ function CandidateList({
           <Badge variant="outline" className="bg-white">
             GitHub Trending
           </Badge>
-          <Button type="button" variant="outline" size="sm" onClick={onRediscover}>
-            重新发现
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onRediscover}
+            disabled={isRediscovering}
+          >
+            {isRediscovering ? '发现中...' : '重新发现'}
           </Button>
         </div>
+        {rediscoverError ? (
+          <div className="rounded-md border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive">
+            {rediscoverError}
+          </div>
+        ) : null}
         <div className="grid grid-cols-2 gap-1 rounded-full bg-slate-100 p-1">
           <button
             type="button"
@@ -247,6 +280,21 @@ function CandidateList({
             当前筛选没有候选
           </div>
         )}
+      </CardContent>
+    </Card>
+  )
+}
+
+function EmptyTopicWorkspace() {
+  return (
+    <Card className="h-full overflow-hidden rounded-[24px] border-slate-200/70 bg-white py-0 shadow-none">
+      <CardContent className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
+        <h2 className="m-0 text-lg font-semibold text-slate-900">
+          先运行一次 Pipeline
+        </h2>
+        <p className="m-0 max-w-sm text-sm leading-6 text-slate-500">
+          点击左侧“重新发现”，从 GitHub Trending 拉取候选项目后再开始选题讨论。
+        </p>
       </CardContent>
     </Card>
   )

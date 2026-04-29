@@ -7,15 +7,17 @@ import viteReact from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { cloudflare } from '@cloudflare/vite-plugin'
 
+const isCloudflareBuild = process.env.GTR_DEPLOY_TARGET === 'cloudflare'
+
 const config = defineConfig({
   resolve: { tsconfigPaths: true },
   plugins: [
     devtools(),
-    cloudflare({ viteEnvironment: { name: 'ssr' } }),
+    isCloudflareBuild ? cloudflare({ viteEnvironment: { name: 'ssr' } }) : null,
     tailwindcss(),
     tanstackStart(),
     viteReact(),
-  ],
+  ].filter(Boolean),
 })
 
 export default config
